@@ -1,5 +1,10 @@
 import { apiRequest } from "./queryClient";
-import type { Executive, Client, InsertExecutive, InsertClient } from "@shared/schema";
+import type {
+  Executive,
+  Client,
+  InsertExecutive,
+  InsertClient,
+} from "@shared/schema";
 
 export interface ClientWithExecutive extends Client {
   executiveName: string;
@@ -26,7 +31,9 @@ export async function getExecutives(): Promise<Executive[]> {
   return response.json();
 }
 
-export async function createExecutive(executive: InsertExecutive): Promise<Executive> {
+export async function createExecutive(
+  executive: InsertExecutive
+): Promise<Executive> {
   const response = await apiRequest("POST", "/api/executives", executive);
   return response.json();
 }
@@ -35,8 +42,8 @@ export async function deleteExecutive(id: number): Promise<void> {
   await apiRequest("DELETE", `/api/executives/${id}`);
 }
 
-export async function getNextExecutive(): Promise<Executive> {
-  const response = await apiRequest("GET", "/api/executives/next");
+export async function getNextExecutive(id: number): Promise<Executive> {
+  const response = await apiRequest("GET", `/api/executives/next/${id}`);
   return response.json();
 }
 
@@ -51,7 +58,10 @@ export async function createClient(client: InsertClient): Promise<Client> {
   return response.json();
 }
 
-export async function updateClient(id: number, updates: Partial<Client>): Promise<Client> {
+export async function updateClient(
+  id: number,
+  updates: Partial<Client>
+): Promise<Client> {
   const response = await apiRequest("PATCH", `/api/clients/${id}`, updates);
   return response.json();
 }
@@ -60,10 +70,13 @@ export async function deleteClient(id: number): Promise<void> {
   await apiRequest("DELETE", `/api/clients/${id}`);
 }
 
-export async function bulkCreateClients(file: File, executiveId: number): Promise<{ message: string; clients: Client[] }> {
+export async function bulkCreateClients(
+  file: File,
+  executiveId: number
+): Promise<{ message: string; clients: Client[] }> {
   const formData = new FormData();
-  formData.append('file', file);
-  formData.append('executiveId', executiveId.toString());
+  formData.append("file", file);
+  formData.append("executiveId", executiveId.toString());
 
   const response = await fetch("/api/clients/bulk-upload", {
     method: "POST",
@@ -79,8 +92,14 @@ export async function bulkCreateClients(file: File, executiveId: number): Promis
   return response.json();
 }
 
-export async function bulkCreateClientsManual(names: string[], executiveId: number): Promise<{ message: string; clients: Client[] }> {
-  const response = await apiRequest("POST", "/api/clients/bulk-manual", { names, executiveId });
+export async function bulkCreateClientsManual(
+  names: string[],
+  executiveId: number
+): Promise<{ message: string; clients: Client[] }> {
+  const response = await apiRequest("POST", "/api/clients/bulk-manual", {
+    names,
+    executiveId,
+  });
   return response.json();
 }
 

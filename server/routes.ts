@@ -263,21 +263,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Round-robin assignment helper
-  app.get("/api/executives/next", async (req, res) => {
+  app.get("/api/executives/next/:id", async (req, res) => {
     try {
       const executives = await storage.getExecutives();
       if (executives.length === 0) {
         return res.status(400).json({ message: "No executives available" });
       }
 
-      // Simple round-robin: get executive with least clients
-      const stats = await storage.getDashboardStats();
-      const leastBusyExecutive = stats.executiveStats.reduce((min, exec) =>
-        exec.clientCount < min.clientCount ? exec : min
-      );
+      const currentId = parseInt(req.params.id);
+      if (isNaN(currentId)) {
+        return res.status(400).json({ message: "Invalid executive ID" });
+      }
+      const sortedExecutives = executives.sort((a, b) => a.id - b.id);
 
-      const executive = await storage.getExecutive(leastBusyExecutive.id);
-      res.json(executive);
+      let nextExecutive;
+      if (!currentId) {
+        nextExecutive = sortedExecutives[0];
+      } else {
+        const currentIndex = sortedExecutives.findIndex(
+          (e) => e.id === currentId
+        );
+        if (currentIndex === -1) {
+          nextExecutive = sortedExecutives[0];
+        } else {
+          const nextIndex = (currentIndex + 1) % sortedExecutives.length;
+          nextExecutive = sortedExecutives[nextIndex];
+        }
+      }
+
+      res.json(nextExecutive);
     } catch (error) {
       console.error("Error getting next executive:", error);
       res.status(500).json({ message: "Failed to get next executive" });

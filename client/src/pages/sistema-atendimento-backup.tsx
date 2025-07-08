@@ -1,8 +1,32 @@
-import { useState } from 'react';
-import { Plus, Upload, BarChart3, Search, Trash2, X, Users, TrendingUp, Clock, CheckCircle } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import {
+  Plus,
+  Upload,
+  BarChart3,
+  Search,
+  Trash2,
+  X,
+  Users,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+} from "recharts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   getExecutives,
   createExecutive,
@@ -16,56 +40,73 @@ import {
   getDashboardStats,
   getNextExecutive,
   type ClientWithExecutive,
-  type DashboardStats
-} from '@/lib/api';
+  type DashboardStats,
+} from "@/lib/api";
 
 const SistemaAtendimento = () => {
-  const [novoCliente, setNovoCliente] = useState('');
-  const [novoExecutivo, setNovoExecutivo] = useState('');
-  const [busca, setBusca] = useState('');
+  const [novoCliente, setNovoCliente] = useState("");
+  const [novoExecutivo, setNovoExecutivo] = useState("");
+  const [busca, setBusca] = useState("");
   const [showDashboard, setShowDashboard] = useState(false);
-  const [filtroColuna, setFiltroColuna] = useState('');
-  const [uploadExecutivo, setUploadExecutivo] = useState('');
-  const [listaClientes, setListaClientes] = useState('');
+  const [filtroColuna, setFiltroColuna] = useState("");
+  const [uploadExecutivo, setUploadExecutivo] = useState("");
+  const [listaClientes, setListaClientes] = useState("");
   const [showListaInput, setShowListaInput] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [nextExecutiveId, setNextExecutiveId] = useState<number>(0);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const cores = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+  const cores = [
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#8B5CF6",
+    "#EC4899",
+    "#06B6D4",
+    "#84CC16",
+  ];
 
   // Queries
   const { data: executivos = [], isLoading: loadingExecutivos } = useQuery({
-    queryKey: ['/api/executives'],
+    queryKey: ["/api/executives"],
     queryFn: getExecutives,
   });
 
   const { data: clientes = [], isLoading: loadingClientes } = useQuery({
-    queryKey: ['/api/clients'],
+    queryKey: ["/api/clients"],
     queryFn: getClients,
   });
 
   const { data: dashboardStats, isLoading: loadingStats } = useQuery({
-    queryKey: ['/api/dashboard/stats'],
+    queryKey: ["/api/dashboard/stats"],
     queryFn: getDashboardStats,
     enabled: showDashboard,
   });
 
-  const { data: nextExecutive } = useQuery({
-    queryKey: ['/api/executives/next'],
-    queryFn: getNextExecutive,
+  const { data: nextExecutive, refetch: refetchNextExecutive } = useQuery({
+    queryKey: ["/api/executives/next", nextExecutiveId],
+    queryFn: () => getNextExecutive(nextExecutiveId),
     enabled: executivos.length > 0,
   });
+
+  const pularExecutivo = () => {
+    if (nextExecutive) {
+      setNextExecutiveId(nextExecutive.id);
+      refetchNextExecutive();
+    }
+  };
 
   // Mutations
   const createClientMutation = useMutation({
     mutationFn: createClient,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/executives/next'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      setNovoCliente('');
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives/next"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setNovoCliente("");
       toast({
         title: "Sucesso",
         description: "Cliente adicionado com sucesso",
@@ -83,9 +124,9 @@ const SistemaAtendimento = () => {
   const createExecutiveMutation = useMutation({
     mutationFn: createExecutive,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/executives'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/executives/next'] });
-      setNovoExecutivo('');
+      queryClient.invalidateQueries({ queryKey: ["/api/executives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives/next"] });
+      setNovoExecutivo("");
       toast({
         title: "Sucesso",
         description: "Executivo adicionado com sucesso",
@@ -103,10 +144,10 @@ const SistemaAtendimento = () => {
   const deleteExecutiveMutation = useMutation({
     mutationFn: deleteExecutive,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/executives'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/executives/next'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives/next"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Executivo removido com sucesso",
@@ -122,11 +163,16 @@ const SistemaAtendimento = () => {
   });
 
   const updateClientMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: number; updates: Partial<ClientWithExecutive> }) =>
-      updateClient(id, updates),
+    mutationFn: ({
+      id,
+      updates,
+    }: {
+      id: number;
+      updates: Partial<ClientWithExecutive>;
+    }) => updateClient(id, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     },
     onError: (error: any) => {
       toast({
@@ -140,8 +186,8 @@ const SistemaAtendimento = () => {
   const deleteClientMutation = useMutation({
     mutationFn: deleteClient,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Sucesso",
         description: "Cliente removido com sucesso",
@@ -160,11 +206,11 @@ const SistemaAtendimento = () => {
     mutationFn: ({ file, executiveId }: { file: File; executiveId: number }) =>
       bulkCreateClients(file, executiveId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/executives/next'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives/next"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setSelectedFile(null);
-      setUploadExecutivo('');
+      setUploadExecutivo("");
       toast({
         title: "Sucesso",
         description: data.message,
@@ -180,15 +226,20 @@ const SistemaAtendimento = () => {
   });
 
   const bulkManualMutation = useMutation({
-    mutationFn: ({ names, executiveId }: { names: string[]; executiveId: number }) =>
-      bulkCreateClientsManual(names, executiveId),
+    mutationFn: ({
+      names,
+      executiveId,
+    }: {
+      names: string[];
+      executiveId: number;
+    }) => bulkCreateClientsManual(names, executiveId),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/executives/next'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
-      setListaClientes('');
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/executives/next"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setListaClientes("");
       setShowListaInput(false);
-      setUploadExecutivo('');
+      setUploadExecutivo("");
       toast({
         title: "Sucesso",
         description: data.message,
@@ -223,7 +274,7 @@ const SistemaAtendimento = () => {
 
   const adicionarExecutivo = () => {
     if (!novoExecutivo.trim()) return;
-    
+
     const cor = cores[executivos.length % cores.length];
     createExecutiveMutation.mutate({
       name: novoExecutivo.trim(),
@@ -240,8 +291,10 @@ const SistemaAtendimento = () => {
       });
       return;
     }
-    
-    const executivoSelecionado = executivos.find(e => e.name === uploadExecutivo);
+
+    const executivoSelecionado = executivos.find(
+      (e) => e.name === uploadExecutivo
+    );
     if (!executivoSelecionado) {
       toast({
         title: "Erro",
@@ -251,7 +304,10 @@ const SistemaAtendimento = () => {
       return;
     }
 
-    const names = listaClientes.split('\n').map(nome => nome.trim()).filter(nome => nome);
+    const names = listaClientes
+      .split("\n")
+      .map((nome) => nome.trim())
+      .filter((nome) => nome);
     bulkManualMutation.mutate({ names, executiveId: executivoSelecionado.id });
   };
 
@@ -265,7 +321,9 @@ const SistemaAtendimento = () => {
       return;
     }
 
-    const executivoSelecionado = executivos.find(e => e.name === uploadExecutivo);
+    const executivoSelecionado = executivos.find(
+      (e) => e.name === uploadExecutivo
+    );
     if (!executivoSelecionado) {
       toast({
         title: "Erro",
@@ -275,36 +333,41 @@ const SistemaAtendimento = () => {
       return;
     }
 
-    bulkUploadMutation.mutate({ file: selectedFile, executiveId: executivoSelecionado.id });
+    bulkUploadMutation.mutate({
+      file: selectedFile,
+      executiveId: executivoSelecionado.id,
+    });
   };
 
-  const clientesFiltrados = clientes.filter(cliente => {
+  const clientesFiltrados = clientes.filter((cliente) => {
     const termoBusca = busca.toLowerCase();
     const filtro = filtroColuna.toLowerCase();
-    
+
     return (
-      cliente.name.toLowerCase().includes(termoBusca) ||
-      cliente.executiveName.toLowerCase().includes(termoBusca)
-    ) && (
-      !filtro || 
-      cliente.name.toLowerCase().includes(filtro) ||
-      cliente.executiveName.toLowerCase().includes(filtro) ||
-      new Date(cliente.createdAt).toLocaleString('pt-BR').toLowerCase().includes(filtro)
+      (cliente.name.toLowerCase().includes(termoBusca) ||
+        cliente.executiveName.toLowerCase().includes(termoBusca)) &&
+      (!filtro ||
+        cliente.name.toLowerCase().includes(filtro) ||
+        cliente.executiveName.toLowerCase().includes(filtro) ||
+        new Date(cliente.createdAt)
+          .toLocaleString("pt-BR")
+          .toLowerCase()
+          .includes(filtro))
     );
   });
 
   const estatisticas = dashboardStats?.executiveStats || [];
-  const dadosGrafico = estatisticas.map(stat => ({
+  const dadosGrafico = estatisticas.map((stat) => ({
     nome: stat.name,
     Total: stat.clientCount,
     Propostas: stat.proposalCount,
-    Pendentes: stat.clientCount - stat.proposalCount
+    Pendentes: stat.clientCount - stat.proposalCount,
   }));
 
-  const dadosPizza = estatisticas.map(stat => ({
+  const dadosPizza = estatisticas.map((stat) => ({
     name: stat.name,
     value: stat.clientCount,
-    color: stat.color
+    color: stat.color,
   }));
 
   const totalClientes = dashboardStats?.totalClients || 0;
@@ -341,38 +404,60 @@ const SistemaAtendimento = () => {
                 <div className="flex items-center gap-2">
                   <Users className="text-blue-500 flex-shrink-0" size={20} />
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">Total de Clientes</p>
-                    <p className="text-xl sm:text-2xl font-bold text-blue-600">{totalClientes}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                      Total de Clientes
+                    </p>
+                    <p className="text-xl sm:text-2xl font-bold text-blue-600">
+                      {totalClientes}
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white card-responsive rounded-lg shadow-lg border-l-4 border-green-500">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="text-green-500 flex-shrink-0" size={20} />
+                  <CheckCircle
+                    className="text-green-500 flex-shrink-0"
+                    size={20}
+                  />
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">Propostas Enviadas</p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-600">{totalPropostas}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                      Propostas Enviadas
+                    </p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">
+                      {totalPropostas}
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white card-responsive rounded-lg shadow-lg border-l-4 border-orange-500">
                 <div className="flex items-center gap-2">
                   <Clock className="text-orange-500 flex-shrink-0" size={20} />
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">Pendentes</p>
-                    <p className="text-xl sm:text-2xl font-bold text-orange-600">{totalClientes - totalPropostas}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                      Pendentes
+                    </p>
+                    <p className="text-xl sm:text-2xl font-bold text-orange-600">
+                      {totalClientes - totalPropostas}
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white card-responsive rounded-lg shadow-lg border-l-4 border-purple-500">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="text-purple-500 flex-shrink-0" size={20} />
+                  <TrendingUp
+                    className="text-purple-500 flex-shrink-0"
+                    size={20}
+                  />
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">Taxa de Conversão</p>
-                    <p className="text-xl sm:text-2xl font-bold text-purple-600">{taxaConversao.toFixed(1)}%</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                      Taxa de Conversão
+                    </p>
+                    <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                      {taxaConversao.toFixed(1)}%
+                    </p>
                   </div>
                 </div>
               </div>
@@ -381,7 +466,9 @@ const SistemaAtendimento = () => {
             {/* Gráfico */}
             <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-4 sm:mb-6 mx-2 sm:mx-0">
               <div className="bg-white card-responsive rounded-lg shadow-lg">
-                <h3 className="text-lg font-semibold mb-4">Proporção de Clientes (%)</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Proporção de Clientes (%)
+                </h3>
                 <div className="chart-responsive">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -391,13 +478,17 @@ const SistemaAtendimento = () => {
                         cy="50%"
                         outerRadius="80%"
                         dataKey="value"
-                        label={({ name, value, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                        label={({ name, value, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(1)}%`
+                        }
                       >
                         {dadosPizza.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value, name) => [`${value} clientes`, name]} />
+                      <Tooltip
+                        formatter={(value, name) => [`${value} clientes`, name]}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -406,17 +497,31 @@ const SistemaAtendimento = () => {
 
             {/* Tabela de Performance */}
             <div className="bg-white rounded-lg shadow-lg card-responsive mx-2 sm:mx-0">
-              <h3 className="text-lg font-semibold mb-4">Performance dos Executivos</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                Performance dos Executivos
+              </h3>
               <div className="table-responsive">
                 <table className="w-full min-w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Executivo</th>
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Total</th>
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">Propostas</th>
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">Pendentes</th>
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden lg:table-cell">% do Total</th>
-                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Conversão</th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                        Executivo
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                        Total
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">
+                        Propostas
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">
+                        Pendentes
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden lg:table-cell">
+                        % do Total
+                      </th>
+                      <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                        Conversão
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -424,20 +529,34 @@ const SistemaAtendimento = () => {
                       <tr key={index} className="border-b hover:bg-gray-50">
                         <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base">
                           <div className="flex items-center gap-2">
-                            <div 
+                            <div
                               className="w-3 h-3 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
                               style={{ backgroundColor: stat.color }}
                             />
                             <span className="truncate">{stat.name}</span>
                           </div>
                         </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base font-medium">{stat.clientCount}</td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">{stat.proposalCount}</td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">{stat.clientCount - stat.proposalCount}</td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden lg:table-cell">
-                          {totalClientes > 0 ? ((stat.clientCount / totalClientes) * 100).toFixed(1) : 0}%
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base font-medium">
+                          {stat.clientCount}
                         </td>
-                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base font-medium">{stat.conversionRate.toFixed(1)}%</td>
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">
+                          {stat.proposalCount}
+                        </td>
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">
+                          {stat.clientCount - stat.proposalCount}
+                        </td>
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden lg:table-cell">
+                          {totalClientes > 0
+                            ? (
+                                (stat.clientCount / totalClientes) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
+                        </td>
+                        <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base font-medium">
+                          {stat.conversionRate.toFixed(1)}%
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -478,7 +597,7 @@ const SistemaAtendimento = () => {
                 onChange={(e) => setNovoCliente(e.target.value)}
                 placeholder="Nome do cliente"
                 className="input-responsive border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && adicionarCliente()}
+                onKeyPress={(e) => e.key === "Enter" && adicionarCliente()}
               />
               <button
                 onClick={adicionarCliente}
@@ -491,7 +610,11 @@ const SistemaAtendimento = () => {
             </div>
             {nextExecutive && (
               <p className="text-sm text-gray-600 mt-2">
-                Próximo: <span className="font-semibold" style={{ color: nextExecutive.color }}>
+                Próximo:{" "}
+                <span
+                  className="font-semibold"
+                  style={{ color: nextExecutive.color }}
+                >
                   {nextExecutive.name}
                 </span>
               </p>
@@ -509,7 +632,7 @@ const SistemaAtendimento = () => {
                 onChange={(e) => setNovoExecutivo(e.target.value)}
                 placeholder="Nome do executivo"
                 className="input-responsive border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && adicionarExecutivo()}
+                onKeyPress={(e) => e.key === "Enter" && adicionarExecutivo()}
               />
               <button
                 onClick={adicionarExecutivo}
@@ -533,8 +656,10 @@ const SistemaAtendimento = () => {
                 className="input-responsive border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione executivo</option>
-                {executivos.map(exec => (
-                  <option key={exec.id} value={exec.name}>{exec.name}</option>
+                {executivos.map((exec) => (
+                  <option key={exec.id} value={exec.name}>
+                    {exec.name}
+                  </option>
                 ))}
               </select>
               <button
@@ -545,7 +670,7 @@ const SistemaAtendimento = () => {
                 <span className="hidden sm:inline">Lista</span>
               </button>
             </div>
-            
+
             <div className="flex-responsive">
               <input
                 type="file"
@@ -584,7 +709,13 @@ const SistemaAtendimento = () => {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={pularExecutivo}
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700"
+          >
+            Pular Próximo
+          </button>
           <button
             onClick={() => setShowDashboard(true)}
             className="button-responsive bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2 w-full sm:w-auto"
@@ -600,13 +731,18 @@ const SistemaAtendimento = () => {
         <h3 className="text-lg font-semibold mb-4">Executivos Cadastrados</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {executivos.map((exec) => (
-            <div key={exec.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <div
+              key={exec.id}
+              className="flex items-center justify-between p-3 border rounded-lg"
+            >
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div 
+                <div
                   className="w-4 h-4 rounded-full flex-shrink-0"
                   style={{ backgroundColor: exec.color }}
                 />
-                <span className="font-medium truncate text-sm sm:text-base">{exec.name}</span>
+                <span className="font-medium truncate text-sm sm:text-base">
+                  {exec.name}
+                </span>
                 {nextExecutive && exec.id === nextExecutive.id && (
                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded whitespace-nowrap">
                     Próximo
@@ -633,7 +769,10 @@ const SistemaAtendimento = () => {
               Buscar Cliente/Executivo
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={16}
+              />
               <input
                 type="text"
                 value={busca}
@@ -667,11 +806,21 @@ const SistemaAtendimento = () => {
           <table className="w-full min-w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Cliente</th>
-                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">Executivo</th>
-                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">Data de Entrada</th>
-                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Proposta</th>
-                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">Ações</th>
+                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                  Cliente
+                </th>
+                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">
+                  Executivo
+                </th>
+                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base hidden md:table-cell">
+                  Data de Entrada
+                </th>
+                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                  Proposta
+                </th>
+                <th className="text-left py-2 px-2 sm:px-4 text-sm sm:text-base">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -680,7 +829,7 @@ const SistemaAtendimento = () => {
                   <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base font-medium">
                     <div className="truncate">{cliente.name}</div>
                     <div className="sm:hidden text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      <div 
+                      <div
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: cliente.executiveColor }}
                       />
@@ -689,7 +838,7 @@ const SistemaAtendimento = () => {
                   </td>
                   <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm sm:text-base hidden sm:table-cell">
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: cliente.executiveColor }}
                       />
@@ -697,22 +846,24 @@ const SistemaAtendimento = () => {
                     </div>
                   </td>
                   <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm text-gray-600 hidden md:table-cell">
-                    {new Date(cliente.createdAt).toLocaleString('pt-BR')}
+                    {new Date(cliente.createdAt).toLocaleString("pt-BR")}
                   </td>
                   <td className="py-2 sm:py-3 px-2 sm:px-4">
                     <button
-                      onClick={() => updateClientMutation.mutate({
-                        id: cliente.id,
-                        updates: { proposalSent: !cliente.proposalSent }
-                      })}
+                      onClick={() =>
+                        updateClientMutation.mutate({
+                          id: cliente.id,
+                          updates: { proposalSent: !cliente.proposalSent },
+                        })
+                      }
                       disabled={updateClientMutation.isPending}
                       className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium disabled:opacity-50 whitespace-nowrap ${
                         cliente.proposalSent
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-orange-100 text-orange-800'
+                          ? "bg-green-100 text-green-800"
+                          : "bg-orange-100 text-orange-800"
                       }`}
                     >
-                      {cliente.proposalSent ? 'Enviada' : 'Pendente'}
+                      {cliente.proposalSent ? "Enviada" : "Pendente"}
                     </button>
                   </td>
                   <td className="py-2 sm:py-3 px-2 sm:px-4">
