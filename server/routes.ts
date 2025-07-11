@@ -1,17 +1,37 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import * as XLSX from "xlsx";
 import { storage } from "./storage";
-import { insertExecutiveSchema, insertClientSchema } from "@shared/schema";
+import {
+  insertExecutiveSchema,
+  insertClientSchema,
+  Client,
+} from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
+import path from "path";
+
+const allowedExtensions = [".txt", ".csv", ".xlsx", ".xls"];
+const allowedMimeTypes = [
+  "text/plain",
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+];
 
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "text/plain" || file.mimetype === "text/csv") {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mimetype = file.mimetype;
+
+    const isExtensionValid = allowedExtensions.includes(ext);
+    const isMimeTypeValid = allowedMimeTypes.includes(mimetype);
+
+    if (isExtensionValid && isMimeTypeValid) {
       cb(null, true);
     } else {
-      cb(new Error("Only .txt and .csv files are allowed"));
+      cb(new Error("Only .txt, .csv, .xlsx, and .xls files are allowed"));
     }
   },
 });
@@ -98,32 +118,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", async (req, res) => {
     try {
       const validatedData = insertClientSchema.parse(req.body);
+      const normalizedName = validatedData.name.trim().toLowerCase();
 
-      // Check if client with this name already exists
+      // Busca se já existe algum cliente com o mesmo nome (case-insensitive)
       const existingClients = await storage.getClients();
-      const nameExists = existingClients.some(
-        (client) =>
-          client.name.toLowerCase() === validatedData.name.toLowerCase()
+      const existingClient = existingClients.find(
+        (client) => client.name.trim().toLowerCase() === normalizedName
       );
 
-      if (nameExists) {
-        const existingClient = existingClients.find(
-          (c) => c.name.toLowerCase() === validatedData.name.toLowerCase()
-        );
+      if (existingClient) {
         return res.status(400).json({
-          message: `Cliente "${validatedData.name}" já está sendo atendido por ${existingClient?.executiveName}`,
+          message: `Cliente "${validatedData.name}" já está sendo atendido por ${existingClient.executiveName}`,
         });
       }
 
-      const client = await storage.createClient(validatedData);
-      res.status(201).json(client);
+      const client = await storage.createClient({
+        ...validatedData,
+        name: validatedData.name.trim(),
+      });
+
+      return res.status(201).json(client);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid data", errors: error.errors });
-      } else {
-        console.error("Error creating client:", error);
-        res.status(500).json({ message: "Failed to create client" });
+        return res
+          .status(400)
+          .json({ message: "Invalid data", errors: error.errors });
       }
+
+      console.error("Error creating client:", error);
+      return res.status(500).json({ message: "Failed to create client" });
     }
   });
 
@@ -166,31 +189,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk upload route
+  async function validateAndFilterNames(names: string[], executiveId: number) {
+    const trimmedNames = names
+      .map((name) => name.trim())
+      .filter((n) => n.length > 0);
+    const uniqueNames = Array.from(new Set(trimmedNames));
+
+    const existingClients = await storage.getClients();
+    const existingNamesSet = new Set(
+      existingClients.map((c) => c.name.toLowerCase())
+    );
+
+    const validClientsData = [];
+    const duplicatesInDatabase: string[] = [];
+
+    for (const name of uniqueNames) {
+      if (existingNamesSet.has(name.toLowerCase())) {
+        const existingClient = existingClients.find(
+          (c) => c.name.toLowerCase() === name.toLowerCase()
+        );
+        if (existingClient) {
+          duplicatesInDatabase.push(
+            `Cliente "${name}" já existe no sistema, atendido por ${existingClient.executiveName}`
+          );
+        }
+      } else {
+        validClientsData.push({
+          name,
+          executiveId,
+          proposalSent: false,
+        });
+      }
+    }
+
+    return { validClientsData, duplicatesInDatabase };
+  }
+
+  // Rota de upload por arquivo
   app.post(
     "/api/clients/bulk-upload",
-    upload.single("file"),
+    (req, res, next) =>
+      upload.single("file")(req, res, (err) => {
+        if (err) return res.status(400).json({ message: err.message });
+        next();
+      }),
     async (req, res) => {
       try {
-        if (!req.file) {
+        if (!req.file)
           return res.status(400).json({ message: "No file uploaded" });
-        }
 
         const { executiveId } = req.body;
-        if (!executiveId) {
+        if (!executiveId)
           return res.status(400).json({ message: "Executive ID is required" });
-        }
 
-        const executive = await storage.getExecutive(parseInt(executiveId));
-        if (!executive) {
+        const executive = await storage.getExecutive(executiveId);
+        if (!executive)
           return res.status(400).json({ message: "Executive not found" });
-        }
 
-        const fileContent = req.file.buffer.toString("utf-8");
-        const names = fileContent
-          .split("\n")
-          .map((name) => name.trim())
-          .filter((name) => name.length > 0);
+        let names: string[] = [];
+        const ext = path.extname(req.file.originalname).toLowerCase();
+
+        if (ext === ".txt" || ext === ".csv") {
+          const fileContent = req.file.buffer.toString("utf-8");
+          names = fileContent.split("\n").flatMap((line) =>
+            line
+              .split(/[,;]/)
+              .map((name) => name.trim())
+              .filter((name) => name.length > 0)
+          );
+        } else if (ext === ".xlsx" || ext === ".xls") {
+          const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          names = rows
+            .map((row) => (Array.isArray(row) ? row[0] : null))
+            .filter(
+              (name) => typeof name === "string" && name.trim().length > 0
+            )
+            .map((name) => name.trim());
+        } else {
+          return res
+            .status(400)
+            .json({ message: "Unsupported file extension" });
+        }
 
         if (names.length === 0) {
           return res
@@ -198,28 +280,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .json({ message: "No valid names found in file" });
         }
 
-        const clientsData = names.map((name) => ({
-          name,
-          executiveId: parseInt(executiveId),
-          proposalSent: false,
-        }));
+        const { validClientsData, duplicatesInDatabase } =
+          await validateAndFilterNames(names, parseInt(executiveId));
 
-        const createdClients = await storage.bulkCreateClients(clientsData);
-        res.status(201).json({
-          message: `${createdClients.length} clients created successfully`,
+        let createdClients: Client[] = [];
+        if (validClientsData.length > 0) {
+          createdClients = await storage.bulkCreateClients(validClientsData);
+        }
+
+        const message =
+          createdClients.length > 0
+            ? `${createdClients.length} cliente(s) criado(s) com sucesso`
+            : "Nenhum cliente foi criado, todos já existem no sistema";
+
+        return res.status(201).json({
+          message,
           clients: createdClients,
+          duplicates: duplicatesInDatabase,
         });
       } catch (error) {
         console.error("Error processing file upload:", error);
-        res.status(500).json({ message: "Failed to process file upload" });
+        res.status(500).json({ message: "Erro ao processar o arquivo" });
       }
     }
   );
 
-  // Manual bulk upload route
+  // Rota de envio manual
   app.post("/api/clients/bulk-manual", async (req, res) => {
     try {
-      const { names, executiveId } = req.body;
+      const { names, executiveId }: { names: string[]; executiveId: number } =
+        req.body;
 
       if (!names || !Array.isArray(names) || names.length === 0) {
         return res.status(400).json({ message: "Names array is required" });
@@ -229,25 +319,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Executive ID is required" });
       }
 
-      const executive = await storage.getExecutive(parseInt(executiveId));
+      const executive = await storage.getExecutive(executiveId);
       if (!executive) {
         return res.status(400).json({ message: "Executive not found" });
       }
 
-      const clientsData = names.map((name) => ({
-        name: name.trim(),
-        executiveId: parseInt(executiveId),
-        proposalSent: false,
-      }));
+      const { validClientsData, duplicatesInDatabase } =
+        await validateAndFilterNames(names, executiveId);
 
-      const createdClients = await storage.bulkCreateClients(clientsData);
-      res.status(201).json({
-        message: `${createdClients.length} clients created successfully`,
+      let createdClients: Client[] = [];
+      if (validClientsData.length > 0) {
+        createdClients = await storage.bulkCreateClients(validClientsData);
+      }
+
+      const message =
+        createdClients.length > 0
+          ? `${createdClients.length} cliente(s) criado(s) com sucesso`
+          : "Nenhum cliente foi criado, todos já existem no sistema";
+
+      return res.status(201).json({
+        message,
         clients: createdClients,
+        duplicates: duplicatesInDatabase,
       });
     } catch (error) {
       console.error("Error creating clients:", error);
-      res.status(500).json({ message: "Failed to create clients" });
+      res.status(500).json({ message: "Erro interno ao criar clientes" });
     }
   });
 

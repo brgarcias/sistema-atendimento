@@ -73,7 +73,7 @@ export async function deleteClient(id: number): Promise<void> {
 export async function bulkCreateClients(
   file: File,
   executiveId: number
-): Promise<{ message: string; clients: Client[] }> {
+): Promise<{ message: string; clients: Client[]; duplicates: string[] }> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("executiveId", executiveId.toString());
@@ -95,7 +95,11 @@ export async function bulkCreateClients(
 export async function bulkCreateClientsManual(
   names: string[],
   executiveId: number
-): Promise<{ message: string; clients: Client[] }> {
+): Promise<{
+  message: string;
+  clients: Client[];
+  duplicates: string[];
+}> {
   const response = await apiRequest("POST", "/api/clients/bulk-manual", {
     names,
     executiveId,

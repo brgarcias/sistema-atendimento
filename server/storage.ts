@@ -1,6 +1,13 @@
-import { executives, clients, type Executive, type Client, type InsertExecutive, type InsertClient } from "@shared/schema";
+import {
+  executives,
+  clients,
+  type Executive,
+  type Client,
+  type InsertExecutive,
+  type InsertClient,
+} from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Executives
@@ -10,11 +17,16 @@ export interface IStorage {
   deleteExecutive(id: number): Promise<void>;
 
   // Clients
-  getClients(): Promise<Array<Client & { executiveName: string; executiveColor: string }>>;
+  getClients(): Promise<
+    Array<Client & { executiveName: string; executiveColor: string }>
+  >;
   getClient(id: number): Promise<Client | undefined>;
   getClientsByExecutive(executiveId: number): Promise<Client[]>;
   createClient(client: InsertClient): Promise<Client>;
-  updateClient(id: number, updates: Partial<Client>): Promise<Client | undefined>;
+  updateClient(
+    id: number,
+    updates: Partial<Client>
+  ): Promise<Client | undefined>;
   deleteClient(id: number): Promise<void>;
   bulkCreateClients(clients: InsertClient[]): Promise<Client[]>;
 
@@ -40,7 +52,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExecutive(id: number): Promise<Executive | undefined> {
-    const [executive] = await db.select().from(executives).where(eq(executives.id, id));
+    const [executive] = await db
+      .select()
+      .from(executives)
+      .where(eq(executives.id, id));
     return executive || undefined;
   }
 
@@ -59,7 +74,9 @@ export class DatabaseStorage implements IStorage {
     await db.delete(executives).where(eq(executives.id, id));
   }
 
-  async getClients(): Promise<Array<Client & { executiveName: string; executiveColor: string }>> {
+  async getClients(): Promise<
+    Array<Client & { executiveName: string; executiveColor: string }>
+  > {
     const result = await db
       .select({
         id: clients.id,
@@ -73,11 +90,11 @@ export class DatabaseStorage implements IStorage {
       .from(clients)
       .leftJoin(executives, eq(clients.executiveId, executives.id))
       .orderBy(desc(clients.createdAt));
-    
-    return result.map(row => ({
+
+    return result.map((row) => ({
       ...row,
-      executiveName: row.executiveName || '',
-      executiveColor: row.executiveColor || '#3B82F6',
+      executiveName: row.executiveName || "",
+      executiveColor: row.executiveColor || "#3B82F6",
     }));
   }
 
@@ -87,18 +104,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByExecutive(executiveId: number): Promise<Client[]> {
-    return await db.select().from(clients).where(eq(clients.executiveId, executiveId));
+    return await db
+      .select()
+      .from(clients)
+      .where(eq(clients.executiveId, executiveId));
   }
 
   async createClient(insertClient: InsertClient): Promise<Client> {
-    const [client] = await db
-      .insert(clients)
-      .values(insertClient)
-      .returning();
+    const [client] = await db.insert(clients).values(insertClient).returning();
     return client;
   }
 
-  async updateClient(id: number, updates: Partial<Client>): Promise<Client | undefined> {
+  async updateClient(
+    id: number,
+    updates: Partial<Client>
+  ): Promise<Client | undefined> {
     const [client] = await db
       .update(clients)
       .set(updates)
@@ -113,7 +133,7 @@ export class DatabaseStorage implements IStorage {
 
   async bulkCreateClients(insertClients: InsertClient[]): Promise<Client[]> {
     if (insertClients.length === 0) return [];
-    
+
     const createdClients = await db
       .insert(clients)
       .values(insertClients)
@@ -124,17 +144,21 @@ export class DatabaseStorage implements IStorage {
   async getDashboardStats() {
     const allExecutives = await this.getExecutives();
     const allClients = await this.getClients();
-    
-    const totalClients = allClients.length;
-    const totalProposals = allClients.filter(c => c.proposalSent).length;
-    const conversionRate = totalClients > 0 ? (totalProposals / totalClients) * 100 : 0;
 
-    const executiveStats = allExecutives.map(executive => {
-      const executiveClients = allClients.filter(c => c.executiveId === executive.id);
-      const executiveProposals = executiveClients.filter(c => c.proposalSent);
-      const executiveConversionRate = executiveClients.length > 0 
-        ? (executiveProposals.length / executiveClients.length) * 100 
-        : 0;
+    const totalClients = allClients.length;
+    const totalProposals = allClients.filter((c) => c.proposalSent).length;
+    const conversionRate =
+      totalClients > 0 ? (totalProposals / totalClients) * 100 : 0;
+
+    const executiveStats = allExecutives.map((executive) => {
+      const executiveClients = allClients.filter(
+        (c) => c.executiveId === executive.id
+      );
+      const executiveProposals = executiveClients.filter((c) => c.proposalSent);
+      const executiveConversionRate =
+        executiveClients.length > 0
+          ? (executiveProposals.length / executiveClients.length) * 100
+          : 0;
 
       return {
         id: executive.id,
