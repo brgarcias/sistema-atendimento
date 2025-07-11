@@ -126,6 +126,7 @@ const SistemaAtendimento = () => {
       });
     },
     onError: (error: any) => {
+      console.log("Erro ao criar executivo:", typeof error, error.message);
       toast({
         title: "Erro",
         description: error.message || "Erro ao adicionar executivo",
