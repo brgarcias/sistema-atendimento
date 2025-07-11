@@ -407,18 +407,6 @@ const SistemaAtendimento = () => {
   });
 
   const estatisticas = dashboardStats?.executiveStats || [];
-  const dadosGrafico = estatisticas.map((stat) => ({
-    nome: stat.name,
-    Total: stat.clientCount,
-    Propostas: stat.proposalCount,
-    Pendentes: stat.clientCount - stat.proposalCount,
-  }));
-
-  const dadosPizza = estatisticas.map((stat) => ({
-    name: stat.name,
-    value: stat.clientCount,
-    color: stat.color,
-  }));
 
   const totalClientes = dashboardStats?.totalClients || 0;
   const totalPropostas = dashboardStats?.totalProposals || 0;
@@ -428,7 +416,6 @@ const SistemaAtendimento = () => {
     return (
       <Dashboard
         estatisticas={estatisticas}
-        dadosPizza={dadosPizza}
         totalClientes={totalClientes}
         totalPropostas={totalPropostas}
         taxaConversao={taxaConversao}

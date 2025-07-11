@@ -22,7 +22,6 @@ interface Estatistica {
 
 interface DashboardProps {
   estatisticas: Estatistica[];
-  dadosPizza: { name: string; value: number; color: string }[];
   totalClientes: number;
   totalPropostas: number;
   taxaConversao: number;
@@ -32,7 +31,6 @@ interface DashboardProps {
 
 export default function Dashboard({
   estatisticas,
-  dadosPizza,
   totalClientes,
   totalPropostas,
   taxaConversao,
@@ -48,6 +46,12 @@ export default function Dashboard({
     Total: stat.clientCount,
     Propostas: stat.proposalCount,
     Pendentes: stat.clientCount - stat.proposalCount,
+  }));
+
+  const dadosPizza = estatisticas.map((stat) => ({
+    name: stat.name,
+    value: stat.clientCount,
+    color: stat.color,
   }));
 
   return (

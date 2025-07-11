@@ -53,10 +53,6 @@ interface PainelControleProps {
   setShowDashboard: (value: boolean) => void;
 }
 
-/**
- * PainelControle component provides a control panel for managing clients and executives.
- * It includes options to add new clients, manage executives, upload client lists, and process manual entries.
- */
 const PainelControle = ({
   novoCliente,
   setNovoCliente,
@@ -147,72 +143,84 @@ const PainelControle = ({
           </div>
         </div>
 
-        {/* Upload / Lista Manual */}
-        <div className="space-y-3">
+        {/* Upload e Lista Manual separadas visualmente */}
+        <div className="space-y-4">
           <label className="block text-sm font-medium text-[color:var(--muted-foreground)]">
-            Upload/Lista Manual
+            Upload de Clientes
           </label>
-          <div className="flex-responsive mb-3">
-            <select
-              value={uploadExecutivo}
-              onChange={(e) => setUploadExecutivo(e.target.value)}
-              className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] transition"
-            >
-              <option value="">Selecione executivo</option>
-              {executivos.map((exec) => (
-                <option key={exec.id} value={exec.name}>
-                  {exec.name}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => setShowListaInput(!showListaInput)}
-              className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 flex items-center justify-center gap-2 whitespace-nowrap transition"
-            >
-              <Upload size={16} />
-              <span className="hidden sm:inline">Lista</span>
-            </button>
-          </div>
 
-          <div className="flex-responsive gap-2">
+          {/* Select Executivo */}
+          <select
+            value={uploadExecutivo}
+            onChange={(e) => setUploadExecutivo(e.target.value)}
+            className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] transition w-full"
+          >
+            <option value="">Selecione executivo</option>
+            {executivos.map((exec) => (
+              <option key={exec.id} value={exec.name}>
+                {exec.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Upload de Arquivo */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <input
               type="file"
               accept=".txt,.csv,.xlsx,.xls"
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] text-xs sm:text-sm transition"
+              className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] text-xs sm:text-sm"
             />
             <button
               onClick={processarUpload}
               disabled={bulkUploadMutation.isPending}
-              className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap transition"
+              className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 disabled:opacity-50 flex items-center gap-2 justify-center transition"
             >
               <Upload size={16} />
-              <span className="hidden sm:inline">Upload</span>
+              Upload
             </button>
           </div>
 
-          {showListaInput && (
-            <div className="mt-2 space-y-2">
-              <textarea
-                value={listaClientes}
-                onChange={(e) => setListaClientes(e.target.value)}
-                placeholder="Digite os nomes dos clientes (um por linha)"
-                rows={4}
-                className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] resize-y min-h-20 transition"
-              />
+          <hr className="border-[color:var(--border)]" />
+
+          {/* Lista Manual */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="block text-sm font-medium text-[color:var(--muted-foreground)]">
+                Inserção Manual
+              </span>
               <button
-                onClick={processarListaManual}
-                disabled={bulkManualMutation.isPending}
-                className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 disabled:opacity-50 w-full sm:w-auto transition"
+                onClick={() => setShowListaInput(!showListaInput)}
+                className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 transition flex items-center gap-2"
               >
-                Adicionar Lista
+                <Upload size={16} />
+                Lista
               </button>
             </div>
-          )}
+
+            {showListaInput && (
+              <div className="space-y-2">
+                <textarea
+                  value={listaClientes}
+                  onChange={(e) => setListaClientes(e.target.value)}
+                  placeholder="Digite os nomes dos clientes (um por linha)"
+                  rows={4}
+                  className="input-responsive border border-[color:var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[color:var(--primary)] resize-y min-h-20 transition w-full"
+                />
+                <button
+                  onClick={processarListaManual}
+                  disabled={bulkManualMutation.isPending}
+                  className="button-responsive bg-[color:var(--primary)] text-[color:var(--primary-foreground)] rounded-lg hover:brightness-110 disabled:opacity-50 w-full sm:w-auto transition"
+                >
+                  Adicionar Lista
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Botões de ação */}
+      {/* Botões de Ação */}
       <div className="flex gap-3 mt-6">
         <button
           onClick={pularExecutivo}
