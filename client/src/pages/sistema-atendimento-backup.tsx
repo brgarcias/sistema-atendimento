@@ -113,9 +113,15 @@ const SistemaAtendimento = () => {
       });
     },
     onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message?.message ||
+        error?.message ||
+        "Erro ao adicionar cliente";
+
       toast({
         title: "Erro",
-        description: error.message || "Erro ao adicionar cliente",
+        description: message,
         variant: "destructive",
       });
     },
@@ -212,14 +218,41 @@ const SistemaAtendimento = () => {
       setSelectedFile(null);
       setUploadExecutivo("");
       toast({
-        title: "Sucesso",
-        description: data.message,
+        title: "Resultado da importação",
+        description: (
+          <div>
+            <p>{data.message}</p>
+            {data.duplicates && data.duplicates.length > 0 && (
+              <div
+                className="mt-1 bg-red-100 border border-red-300 rounded-md p-2 max-h-32 overflow-y-auto text-sm text-red-900"
+                aria-label="Lista de duplicados ou erros"
+                style={{ scrollbarWidth: "thin" }}
+              >
+                <ul className="list-disc list-inside space-y-1">
+                  {data.duplicates.map((dup, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <span>{dup}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ),
+        variant: data.clients.length === 0 ? "destructive" : "default",
+        duration: 10000,
       });
     },
     onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Erro ao fazer upload";
+
       toast({
         title: "Erro",
-        description: error.message || "Erro ao fazer upload",
+        description: message,
         variant: "destructive",
       });
     },
@@ -240,15 +273,45 @@ const SistemaAtendimento = () => {
       setListaClientes("");
       setShowListaInput(false);
       setUploadExecutivo("");
+
       toast({
-        title: "Sucesso",
-        description: data.message,
+        title: "Resultado da importação",
+        description: (
+          <div>
+            <p>{data.message}</p>
+            {data.duplicates && data.duplicates.length > 0 && (
+              <div
+                className="mt-1 bg-red-100 border border-red-300 rounded-md p-2 max-h-32 overflow-y-auto text-sm text-red-900"
+                aria-label="Lista de duplicados ou erros"
+                style={{ scrollbarWidth: "thin" }}
+              >
+                <ul className="list-disc list-inside space-y-1">
+                  {data.duplicates.map((dup, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <X className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <span>{dup}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ),
+        variant: data.clients.length === 0 ? "destructive" : "default",
+        duration: 10000,
       });
     },
+
     onError: (error: any) => {
+      const message =
+        error?.response?.data?.message ||
+        error?.message?.message ||
+        error?.message ||
+        "Erro ao adicionar lista";
+
       toast({
         title: "Erro",
-        description: error.message || "Erro ao adicionar lista",
+        description: message,
         variant: "destructive",
       });
     },
@@ -597,7 +660,7 @@ const SistemaAtendimento = () => {
                 onChange={(e) => setNovoCliente(e.target.value)}
                 placeholder="Nome do cliente"
                 className="input-responsive border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === "Enter" && adicionarCliente()}
+                onKeyUp={(e) => e.key === "Enter" && adicionarCliente()}
               />
               <button
                 onClick={adicionarCliente}
@@ -674,7 +737,7 @@ const SistemaAtendimento = () => {
             <div className="flex-responsive">
               <input
                 type="file"
-                accept=".txt,.csv"
+                accept=".txt,.csv,.xlsx,.xls"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 className="input-responsive border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
               />
